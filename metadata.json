@@ -1,0 +1,7 @@
+{
+  "name": "Planificador de Viajes IA Pro",
+  "description": "Una aplicación de planificación de viajes personalizada que utiliza Gemini para generar itinerarios a medida basados en las preferencias del usuario, presupuesto e intereses. Simula técnicas avanzadas de IA como RAG y ajuste fino (fine-tuning) para proporcionar planes de viaje detallados, realistas y de alta calidad.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

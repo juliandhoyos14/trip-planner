@@ -1,38 +1,42 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
-import type { TripPreferences, Itinerary, GroundingChunk } from '../types';
+import type { TripPreferences, Itinerary, GroundingChunk, Language } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const getPrompt = (preferences: TripPreferences): string => {
+const getPrompt = (preferences: TripPreferences, language: Language): string => {
+  const langInstruction = language === 'es' ? 'Spanish' : 'English';
   return `
-Eres una IA experta en planificación de viajes. Tu tarea es crear un itinerario de viaje personalizado, detallado y realista basado en las preferencias del usuario.
+You are an expert travel planning AI. Your task is to create a personalized, detailed, and realistic travel itinerary based on user preferences.
 
-**Preferencias del Usuario:**
-- Destino: ${preferences.destination}
-- Duración: ${preferences.duration} días
-- Presupuesto: Aproximadamente ${preferences.budget}
-- Intereses Clave: ${preferences.interests.join(', ')}
-- Restricciones/Requisitos Específicos: ${preferences.restrictions || 'Ninguno'}
+**Output Language:** Generate the entire response, including all descriptions, titles, and justifications, in ${langInstruction}.
 
-**Instrucciones:**
-1.  **Genera un Itinerario Día por Día:** Crea un plan para cada día del viaje.
-2.  **Sé Realista:** El horario debe ser factible. Considera el tiempo de viaje entre ubicaciones, los horarios de apertura y un ritmo realista. No sugieras lugares que estarían cerrados.
-3.  **Respeta el Presupuesto:** Sugiere actividades y opciones gastronómicas que se ajusten al presupuesto proporcionado. Proporciona costos estimados para las actividades siempre que sea posible.
-4.  **Alinea con los Intereses:** Las actividades deben reflejar los intereses clave del usuario.
-5.  **Proporciona una Justificación:** Después del itinerario, incluye una sección que explique cómo el plan se adapta a las preferencias, el presupuesto y las restricciones del usuario.
-6.  **Simula RAG/Ajuste Fino (Fine-Tuning):** Actúa como si tuvieras acceso a las guías de viaje más actuales, reseñas de usuarios e información local (como horarios de apertura y precios de entradas). Tus descripciones deben ser atractivas e informativas, como un blog de viajes de alta calidad.
-7.  **Datos de Ubicación:** Para cada lugar/actividad sugerida, proporciona su nombre y latitud y longitud aproximadas.
+**User Preferences:**
+- Destination: ${preferences.destination}
+- Duration: ${preferences.duration} days
+- Budget: Approximately ${preferences.budget}
+- Key Interests: ${preferences.interests.join(', ')}
+- Specific Restrictions/Requirements: ${preferences.restrictions || 'None'}
 
-**Formato de Salida:**
-Responde ÚNICAMENTE con un solo objeto JSON válido. No incluyas texto, bloques de código (como \`\`\`json), ni explicaciones antes o después del objeto JSON. El objeto JSON debe cumplir con el esquema especificado.
+**Instructions:**
+1.  **Generate a Day-by-Day Itinerary:** Create a plan for each day of the trip.
+2.  **Be Realistic:** The schedule must be feasible. Consider travel time between locations, opening hours, and a realistic pace. Do not suggest places that would be closed.
+3.  **Respect the Budget:** Suggest activities and dining options that align with the provided budget. Provide estimated costs for activities where possible.
+4.  **Align with Interests:** The activities should reflect the user's key interests.
+5.  **Provide a Justification:** After the itinerary, include a section explaining how the plan accommodates the user's preferences, budget, and restrictions.
+6.  **Simulate RAG/Fine-Tuning:** Act as if you have access to the most current travel guides, user reviews, and local information (like opening hours and ticket prices). Your descriptions should be engaging and informative, like a high-quality travel blog.
+7.  **Location Data:** For each suggested place/activity, provide its name and approximate latitude and longitude.
+
+**Output Format:**
+Respond ONLY with a single, valid JSON object. Do not include any text, code blocks (like \`\`\`json), or explanations before or after the JSON object. The JSON object must adhere to the specified schema.
 `;
 };
 
-export const generateItinerary = async (preferences: TripPreferences): Promise<Itinerary> => {
+export const generateItinerary = async (preferences: TripPreferences, language: Language): Promise<Itinerary> => {
   try {
     const response = await ai.models.generateContent({
         model: "gemini-2.5-pro",
-        contents: getPrompt(preferences),
+        contents: getPrompt(preferences, language),
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -89,13 +93,14 @@ export const generateItinerary = async (preferences: TripPreferences): Promise<I
     return JSON.parse(jsonText) as Itinerary;
   } catch (error) {
     console.error("Error generating itinerary:", error);
-    throw new Error("Error al generar el itinerario. Es posible que el modelo haya devuelto un formato no válido.");
+    throw new Error("Error generating itinerary. The model may have returned an invalid format.");
   }
 };
 
-export const getLocationInfo = async (locationName: string, destination: string, userCoords: {lat: number, lon: number} | null): Promise<{text: string; chunks: GroundingChunk[]}> => {
+export const getLocationInfo = async (locationName: string, destination: string, userCoords: {lat: number, lon: number} | null, language: Language): Promise<{text: string; chunks: GroundingChunk[]}> => {
     try {
-        const prompt = `Proporciona información actualizada para un viajero sobre "${locationName}" en ${destination}. Incluye detalles como horarios de apertura, reseñas típicas de visitantes y cualquier noticia o consejo reciente.`;
+        const langInstruction = language === 'es' ? 'Spanish' : 'English';
+        const prompt = `Provide up-to-date information for a traveler about "${locationName}" in ${destination}. Include details like opening hours, typical visitor reviews, and any recent news or tips. Respond entirely in ${langInstruction}.`;
         
         const config: any = {
             tools: [{ googleSearch: {} }, { googleMaps: {} }],
@@ -127,6 +132,6 @@ export const getLocationInfo = async (locationName: string, destination: string,
 
     } catch(error) {
         console.error("Error getting location info:", error);
-        throw new Error("Error al obtener información de la ubicación con grounding.");
+        throw new Error("Error getting location info with grounding.");
     }
 };

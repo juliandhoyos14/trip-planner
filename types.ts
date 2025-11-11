@@ -1,3 +1,4 @@
+export type Language = 'en' | 'es';
 
 export interface TripPreferences {
   destination: string;
@@ -5,6 +6,13 @@ export interface TripPreferences {
   budget: string;
   interests: string[];
   restrictions: string;
+  otherInterest?: string;
+}
+
+export interface City {
+  name: string;
+  country: string;
+  subcountry: string | null;
 }
 
 export interface Location {
